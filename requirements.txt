@@ -1,0 +1,5 @@
+langgraph>=1.2
+langchain-core>=1.6
+langchain-anthropic>=1.7
+httpx>=0.28
+pytest>=9
