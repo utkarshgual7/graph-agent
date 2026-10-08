@@ -23,6 +23,8 @@ client = httpx.Client(base_url="http://status.internal", transport=httpx.MockTra
 @tool
 def get_application_status(application_id: str) -> str:
     """Look up the current status of a rental application by its exact id (e.g. APP-1042)."""
+    # Users type "app-1002" or paste ids with stray spaces; the model often passes them through verbatim.
+    application_id = application_id.strip().upper()
     r = client.get(f"/applications/{application_id}")
     if r.status_code == 404:
         return f"No application found with id {application_id}."

@@ -4,6 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from graph import FALLBACK, build_graph, check
 from retrieval import retrieve
+from tools import get_application_status
 
 
 class FakeModel(FakeMessagesListChatModel):
@@ -126,3 +127,9 @@ def test_threads_are_isolated():
     assert [m.text for m in out["messages"] if isinstance(m, HumanMessage)] == ["hello"]
     # ...so an id from thread "a" is unknown in thread "b".
     assert check({"messages": [*out["messages"], AIMessage("APP-1002 is in screening.")]}) is not None
+
+
+def test_tool_normalizes_id_case_and_whitespace():
+    assert get_application_status.invoke({"application_id": " app-1002 "}) == (
+        "Application APP-1002 is screening (landlord: Harbor View LLC)."
+    )
