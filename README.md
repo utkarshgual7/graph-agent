@@ -31,7 +31,7 @@ graph TD;
 	classDef last fill:#bfb6fc
 ```
 
-- `retrieve` ([retrieval.py](retrieval.py)): scores the four markdown files by query-term overlap, puts the top two in `state.context`, resets the retry counter.
+- `retrieve` ([retrieval.py](retrieval.py)): scores the four markdown files by query-term overlap (stopwords dropped, trailing plural `s` stripped), puts the top two with any overlap in `state.context`, resets the retry counter. An off-topic query gets no docs, and the system prompt tells the model to say the docs don't cover it.
 - `answer` ([graph.py](graph.py)): `ChatAnthropic.bind_tools([...]).invoke(system + history)`.
 - `tools`: LangGraph's prebuilt `ToolNode`; `tools_condition` routes here when the answer contains tool calls, back to `answer` afterwards.
 - `guardrail`: regex checks on the final text. On the first failure it appends a correction message and routes back to `answer`; on the second it removes the offending messages and emits a fixed fallback.
@@ -66,7 +66,7 @@ Tests inject a `FakeMessagesListChatModel` subclass, so they need no API key and
 
 **Guardrail is deterministic.** It is two regexes (secret/PII shapes, and `APP-\d+` ids not present in any user or tool message this thread). A model-graded check would cost a second call, could be wrong in the same ways the first call was, and cannot be unit-tested with fixed inputs. Regexes can, and they run in microseconds. The retry-once-then-fallback path bounds the worst case at two model calls per turn.
 
-**Keyword retrieval, not a vector DB.** `retrieval.py` is a set-overlap scorer over four files. It is not BM25 and does not pretend to be. The point of the repo is the graph; anything with an embedding model or a vector store would add a service dependency and hide the part worth reading. Past a few hundred documents it would need replacing.
+**Keyword retrieval, not a vector DB.** `retrieval.py` is a set-overlap scorer over four files, with a small stopword list and a naive plural strip. It is not BM25 and does not pretend to be. The point of the repo is the graph; anything with an embedding model or a vector store would add a service dependency and hide the part worth reading. Past a few hundred documents it would need replacing.
 
 **Where the real API plugs in.** `tools.py` builds an `httpx.Client` with a `MockTransport` pointing at a dict. In production the same `get_application_status` function called a live internal endpoint; swapping the transport for a real `base_url` (and adding auth headers) is the only change. Keeping the httpx call rather than reading the dict directly means the tool-node and error paths (404 -> "not found" tool message) are exercised for real.
 

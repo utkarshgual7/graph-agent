@@ -28,6 +28,12 @@ def run(responses, *questions):
 def test_retrieve_ranks_right_doc():
     assert retrieve("how do I reset my password")[0] == "account.md"
     assert retrieve("is the application fee refundable")[0] == "payments.md"
+    assert retrieve("where can I download a receipt")[0] == "payments.md"  # plural "Receipts" in the doc
+
+
+def test_retrieve_returns_nothing_for_off_topic_query():
+    assert retrieve("what's the weather in paris tomorrow") == []
+    assert retrieve("") == []
 
 
 def test_tool_loop_executes_tool():
