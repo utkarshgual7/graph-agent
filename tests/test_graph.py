@@ -103,3 +103,20 @@ def test_fallback_drops_whole_failed_retry_even_with_tool_calls():
     assert msgs[-1].text == FALLBACK
     assert [m.text for m in msgs if isinstance(m, HumanMessage)] == ["am I approved?"]
     assert not any("APP-9999" in m.text for m in msgs)
+
+
+def test_unknown_id_returns_not_found_tool_message():
+    call = AIMessage("", tool_calls=[{"name": "get_application_status", "args": {"application_id": "APP-9999"}, "id": "c1"}])
+    msgs = run([call, AIMessage("I couldn't find APP-9999.")], "status of APP-9999?")
+    tool_msgs = [m for m in msgs if isinstance(m, ToolMessage)]
+    assert tool_msgs[0].text == "No application found with id APP-9999."
+    assert msgs[-1].text == "I couldn't find APP-9999."  # user typed the id, so the guardrail lets it through
+
+
+def test_threads_are_isolated():
+    graph = build_graph(FakeModel(responses=[AIMessage("ok")]))
+    graph.invoke({"messages": [HumanMessage("my id is APP-1002")]}, {"configurable": {"thread_id": "a"}})
+    out = graph.invoke({"messages": [HumanMessage("hello")]}, {"configurable": {"thread_id": "b"}})
+    assert [m.text for m in out["messages"] if isinstance(m, HumanMessage)] == ["hello"]
+    # ...so an id from thread "a" is unknown in thread "b".
+    assert check({"messages": [*out["messages"], AIMessage("APP-1002 is in screening.")]}) is not None
