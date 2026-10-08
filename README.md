@@ -44,6 +44,8 @@ export ANTHROPIC_API_KEY=...
 .venv/bin/python main.py
 ```
 
+The model defaults to `claude-opus-5`; set `ANTHROPIC_MODEL` to override it. API errors (rate limits, overloads, network) are printed and the REPL keeps the same thread, so you can just ask again.
+
 Try: `how do I reset my password`, then `what's the status of APP-1002`, then `and APP-1003?`. Stub ids are `APP-1001`, `APP-1002`, `APP-1003`; anything else returns a 404 from the stub.
 
 ## Test
