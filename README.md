@@ -54,6 +54,14 @@ Try: `how do I reset my password`, then `what's the status of APP-1002`, then `a
 
 Tests inject a `FakeMessagesListChatModel` subclass, so they need no API key and CI runs without secrets. They cover: retrieval ranks the right doc, the tool loop actually executes the tool, the guardrail blocks a secret-shaped string, the guardrail retries once on a fabricated application id, the fallback removes the whole failed retry (tool calls included), and messages persist across turns on one thread.
 
+## Evals
+
+```
+.venv/bin/python -m evals.run_evals
+```
+
+[evals/cases.jsonl](evals/cases.jsonl) holds labelled cases for the two deterministic stages: retrieval (`expect` is the doc that should be in the top 2, or `null` for off-topic queries that should retrieve nothing) and the guardrail (`expect` is `block` or `pass` for a short thread). The script prints failures and per-stage pass rates and exits non-zero below `--min-pass` (default 0.8). It runs in CI after the tests. Unlike the unit tests, a failing case here is not necessarily a bug; the file is meant to grow with real queries and show whether a retrieval or regex change moves the rate.
+
 ## Design notes
 
 **Guardrail is deterministic.** It is two regexes (secret/PII shapes, and `APP-\d+` ids not present in any user or tool message this thread). A model-graded check would cost a second call, could be wrong in the same ways the first call was, and cannot be unit-tested with fixed inputs. Regexes can, and they run in microseconds. The retry-once-then-fallback path bounds the worst case at two model calls per turn.
