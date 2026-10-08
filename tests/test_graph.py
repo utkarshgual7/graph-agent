@@ -1,7 +1,8 @@
+import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from graph import FALLBACK, build_graph
+from graph import FALLBACK, build_graph, check
 from retrieval import retrieve
 
 
@@ -53,3 +54,41 @@ def test_guardrail_retries_once_on_fabricated_id():
 def test_memory_persists_across_turns():
     msgs = run([AIMessage("ok")], "hello", "again")
     assert [m.text for m in msgs if isinstance(m, HumanMessage)] == ["hello", "again"]
+
+
+@pytest.mark.parametrize("text", [
+    "Your key is sk-ant-api03-abcdefghijkl",
+    "Use AKIAABCDEFGHIJKLMNOP for the bucket.",
+    "Your SSN on file is 123-45-6789.",
+    "The card 4111 1111 1111 1111 was charged.",
+    "The card 4111111111111111 was charged.",
+])
+def test_check_flags_secret_and_pii_shapes(text):
+    assert "secret or personal identifier" in check({"messages": [HumanMessage("hi"), AIMessage(text)]})
+
+
+@pytest.mark.parametrize("text", [
+    "The application fee is $29, refunded within 5 to 7 business days.",
+    "Call us at 555-123-4567 between 9 and 5.",
+    "Applications expire 30 days after 2026-10-09.",
+    "Application APP-1001 is approved.",
+])
+def test_check_allows_ordinary_answers(text):
+    assert check({"messages": [HumanMessage("status of APP-1001?"), AIMessage(text)]}) is None
+
+
+def test_check_knows_ids_from_earlier_turns_and_tools():
+    msgs = [
+        HumanMessage("status of APP-1002?"),
+        ToolMessage("Application APP-1003 is expired (landlord: Pinecrest Rentals).", tool_call_id="c1"),
+        AIMessage("done"),
+        HumanMessage("and the other one?"),
+        AIMessage("APP-1002 is in screening and APP-1003 has expired."),
+    ]
+    assert check({"messages": msgs}) is None
+
+
+def test_check_flags_id_only_the_model_mentioned():
+    # An id the model itself said earlier is still not "known": only users and tools count.
+    msgs = [HumanMessage("hi"), AIMessage("Is it APP-4242?"), HumanMessage("what is my status?"), AIMessage("APP-4242 is approved.")]
+    assert "application id" in check({"messages": msgs})
