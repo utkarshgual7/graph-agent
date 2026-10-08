@@ -55,7 +55,13 @@ Try: `how do I reset my password`, then `what's the status of APP-1002`, then `a
 .venv/bin/ruff check .
 ```
 
-Tests inject a `FakeMessagesListChatModel` subclass, so they need no API key and CI runs without secrets. They cover: retrieval ranks the right doc, the tool loop actually executes the tool, the guardrail blocks a secret-shaped string, the guardrail retries once on a fabricated application id, the fallback removes the whole failed retry (tool calls included), and messages persist across turns on one thread.
+Tests inject a `FakeMessagesListChatModel` subclass, so they need no API key and CI runs without secrets. They cover:
+
+- retrieval: ranks the right doc, handles plurals, returns nothing for off-topic queries
+- tools: the tool loop actually executes the tool, unknown ids hit the 404 path, ids are case/whitespace-normalized
+- guardrail patterns: each secret/PII shape is flagged, ordinary answers (fees, phone numbers, dates) are not, and an id counts as known only if a user or tool message on the thread contains it
+- guardrail flow: blocks a secret twice and falls back, retries once on a fabricated id, and the fallback removes the whole failed retry (tool calls included)
+- checkpointing: messages persist across turns on one thread and do not leak between threads
 
 ## Evals
 
