@@ -92,3 +92,14 @@ def test_check_flags_id_only_the_model_mentioned():
     # An id the model itself said earlier is still not "known": only users and tools count.
     msgs = [HumanMessage("hi"), AIMessage("Is it APP-4242?"), HumanMessage("what is my status?"), AIMessage("APP-4242 is approved.")]
     assert "application id" in check({"messages": msgs})
+
+
+def test_fallback_drops_whole_failed_retry_even_with_tool_calls():
+    # The retry calls a tool before answering badly again, so the failed attempt
+    # spans more than the last three messages.
+    call = AIMessage("", tool_calls=[{"name": "get_application_status", "args": {"application_id": "APP-1001"}, "id": "c1"}])
+    bad = AIMessage("APP-9999 is approved.")
+    msgs = run([bad, call, bad], "am I approved?")
+    assert msgs[-1].text == FALLBACK
+    assert [m.text for m in msgs if isinstance(m, HumanMessage)] == ["am I approved?"]
+    assert not any("APP-9999" in m.text for m in msgs)

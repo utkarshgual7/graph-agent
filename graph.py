@@ -56,9 +56,12 @@ def guardrail_node(state: State) -> dict:
         return {}
     if state["retries"] == 0:
         return {"messages": [HumanMessage(problem)], "retries": 1}
-    # Second failure: drop both bad answers and the correction so the violating
-    # text never stays in the thread, then emit a fixed fallback.
-    drop = [RemoveMessage(id=m.id) for m in state["messages"][-3:]]
+    # Second failure: drop the first bad answer, the correction, and everything the
+    # retry produced (tool calls included) so the violating text never stays in the
+    # thread, then emit a fixed fallback. The correction is the last HumanMessage.
+    msgs = state["messages"]
+    correction = max(i for i, m in enumerate(msgs) if isinstance(m, HumanMessage))
+    drop = [RemoveMessage(id=m.id) for m in msgs[correction - 1 :]]
     return {"messages": [*drop, AIMessage(FALLBACK)]}
 
 
