@@ -50,6 +50,7 @@ Try: `how do I reset my password`, then `what's the status of APP-1002`, then `a
 
 ```
 .venv/bin/pytest
+.venv/bin/ruff check .
 ```
 
 Tests inject a `FakeMessagesListChatModel` subclass, so they need no API key and CI runs without secrets. They cover: retrieval ranks the right doc, the tool loop actually executes the tool, the guardrail blocks a secret-shaped string, the guardrail retries once on a fabricated application id, the fallback removes the whole failed retry (tool calls included), and messages persist across turns on one thread.
